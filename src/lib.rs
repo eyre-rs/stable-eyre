@@ -64,7 +64,7 @@ impl EyreContext for Context {
         }
 
         let backtrace = &self.backtrace;
-        write!(f, "\n\n{:?}", backtrace)?;
+        write!(f, "\n\nStack backtrace:\n{:?}", backtrace)?;
 
         Ok(())
     }
