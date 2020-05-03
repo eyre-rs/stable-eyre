@@ -1,0 +1,18 @@
+[package]
+name = "stable-eyre"
+version = "0.1.0"
+authors = ["Jane Lusby <jlusby@yaah.dev>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/yaahc/stable-eyre"
+homepage = "https://github.com/yaahc/stable-eyre"
+documentation = "https://docs.rs/stable-eyre"
+description = """
+A custom context for eyre that supports capturing Backtraces on stable
+"""
+
+[dependencies]
+backtrace = "0.3.46"
+indenter = "0.1.3"
+eyre = "0.3.8"
