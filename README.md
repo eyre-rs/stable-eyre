@@ -21,7 +21,7 @@ Add the following to your toml file:
 ```toml
 [dependencies]
 eyre = "0.3.8"
-stable-eyre = "0.1.0"
+stable-eyre = "0.1"
 ```
 
 And then import the type alias from color-eyre for [`eyre::Report`] or [`eyre::Result`].
@@ -71,3 +71,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in this crate by you, as defined in the Apache-2.0 license, shall
 be dual licensed as above, without any additional terms or conditions.
 </sub>
+
+[`eyre`]: https://docs.rs/eyre
+[`eyre::EyreContext`]: https://docs.rs/eyre/0.3.8/eyre/trait.EyreContext.html
+[`eyre::Report`]: https://docs.rs/eyre/0.3.8/eyre/struct.Report.html

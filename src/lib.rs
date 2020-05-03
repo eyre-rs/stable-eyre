@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```rust,should_panic
 //! use eyre::{eyre, WrapErr};
 //! use stable_eyre::Report;
 //!
@@ -75,7 +75,7 @@ impl EyreContext for Context {
 /// # Example
 ///
 /// ```rust
-/// use color_eyre::Report;
+/// use stable_eyre::Report;
 ///
 /// # struct Config;
 /// fn try_thing(path: &str) -> Result<Config, Report> {
@@ -90,8 +90,7 @@ pub type Report = eyre::Report<Context>;
 /// # Example
 ///
 ///```
-/// #[tracing::instrument]
-/// fn main() -> color_eyre::Result<()> {
+/// fn main() -> stable_eyre::Result<()> {
 ///
 ///     // ...
 ///
