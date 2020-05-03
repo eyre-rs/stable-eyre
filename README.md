@@ -20,7 +20,7 @@ Add the following to your toml file:
 
 ```toml
 [dependencies]
-eyre = "0.3.8"
+eyre = "0.3"
 stable-eyre = "0.1"
 ```
 
