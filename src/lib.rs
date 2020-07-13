@@ -20,23 +20,20 @@
 //! [`backtrace::Backtrace`]: https://docs.rs/backtrace/0.3.46/backtrace/struct.Backtrace.html
 use backtrace::Backtrace;
 use eyre::Chain;
-use eyre::EyreContext;
-use std::error::Error;
+use std::{env, error::Error};
+
+pub use eyre;
+#[doc(hidden)]
+pub use eyre::{Report, Result};
+use indenter::indented;
 
 /// A custom context type for capturing backtraces on stable with `eyre`
 #[derive(Debug)]
-pub struct Context {
-    backtrace: Backtrace,
+pub struct Handler {
+    backtrace: Option<Backtrace>,
 }
 
-impl EyreContext for Context {
-    #[allow(unused_variables)]
-    fn default(error: &(dyn Error + 'static)) -> Self {
-        let backtrace = Backtrace::new();
-
-        Self { backtrace }
-    }
-
+impl eyre::EyreHandler for Handler {
     fn debug(
         &self,
         error: &(dyn Error + 'static),
@@ -56,45 +53,64 @@ impl EyreContext for Context {
             for (n, error) in Chain::new(cause).enumerate() {
                 writeln!(f)?;
                 if multiple {
-                    write!(indenter::Indented::numbered(f, n), "{}", error)?;
+                    write!(indented(f).ind(n), "{}", error)?;
                 } else {
-                    write!(indenter::Indented::new(f), "{}", error)?;
+                    write!(indented(f), "{}", error)?;
                 }
             }
         }
 
-        let backtrace = &self.backtrace;
-        write!(f, "\n\nStack backtrace:\n{:?}", backtrace)?;
+        if let Some(backtrace) = &self.backtrace {
+            write!(f, "\n\nStack backtrace:\n{:?}", backtrace)?;
+        }
 
         Ok(())
     }
 }
 
-/// A type alias for `eyre::Report<stable_eyre::Context>`
-///
-/// # Example
-///
-/// ```rust
-/// use stable_eyre::Report;
-///
-/// # struct Config;
-/// fn try_thing(path: &str) -> Result<Config, Report> {
-///     // ...
-/// # Ok(Config)
-/// }
-/// ```
-pub type Report = eyre::Report<Context>;
+pub struct Hook {
+    capture_backtrace_by_default: bool,
+}
 
-/// A type alias for `Result<T, stable_eyre::Report>`
-///
-/// # Example
-///
-///```
-/// fn main() -> stable_eyre::Result<()> {
-///
-///     // ...
-///
-///     Ok(())
-/// }
-/// ```
-pub type Result<T, E = Report> = core::result::Result<T, E>;
+impl Hook {
+    #[allow(unused_variables)]
+    fn make_handler(&self, error: &(dyn Error + 'static)) -> Handler {
+        let backtrace = if self.capture_enabled() {
+            Some(Backtrace::new())
+        } else {
+            None
+        };
+
+        Handler { backtrace }
+    }
+
+    fn capture_enabled(&self) -> bool {
+        env::var("RUST_LIB_BACKTRACE")
+            .or_else(|_| env::var("RUST_BACKTRACE"))
+            .map(|val| val != "0")
+            .unwrap_or(self.capture_backtrace_by_default)
+    }
+
+    pub fn capture_backtrace_by_default(mut self, cond: bool) -> Self {
+        self.capture_backtrace_by_default = cond;
+        self
+    }
+
+    pub fn install(self) -> Result<()> {
+        crate::eyre::set_hook(Box::new(move |e| Box::new(self.make_handler(e))))?;
+
+        Ok(())
+    }
+}
+
+impl Default for Hook {
+    fn default() -> Self {
+        Self {
+            capture_backtrace_by_default: false,
+        }
+    }
+}
+
+pub fn install() -> Result<()> {
+    Hook::default().install()
+}
