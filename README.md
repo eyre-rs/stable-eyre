@@ -1,18 +1,19 @@
-stable-eyre
------------
+## stable-eyre
 
-A custom context for [`eyre`] that captures a `Backtrace` on stable.
+[![Build Status][actions-badge]][actions-url]
+[![Latest Version][version-badge]][version-url]
+[![Rust Documentation][docs-badge]][docs-url]
 
-## Explanation
+[actions-badge]: https://github.com/yaahc/stable-eyre/workflows/Continuous%20integration/badge.svg
+[actions-url]: https://github.com/yaahc/stable-eyre/actions?query=workflow%3A%22Continuous+integration%22
+[version-badge]: https://img.shields.io/crates/v/stable-eyre.svg
+[version-url]: https://crates.io/crates/stable-eyre
+[docs-badge]: https://img.shields.io/badge/docs-latest-blue.svg
+[docs-url]: https://docs.rs/stable-eyre
 
-This crate works by defining a `Context` type which implements [`eyre::EyreContext`]
-and a pair of type aliases for setting this context type as the parameter of
-[`eyre::Report`].
-
-```rust
-pub type Report = eyre::Report<Context>;
-pub type Result<T, E = Report> = core::result::Result<T, E>;
-```
+This library provides a custom [`eyre::EyreHandler`] type for usage with [`eyre`] that provides
+all the same features as `eyre::DefaultHandler` except it works on stable by capturing a
+[`backtrace::Backtrace`] via backtrace-rs.
 
 ## Setup
 
@@ -20,42 +21,28 @@ Add the following to your toml file:
 
 ```toml
 [dependencies]
-eyre = "0.3"
-stable-eyre = "0.1"
+stable-eyre = "0.2"
 ```
 
-And then import the type alias from color-eyre for [`eyre::Report`] or [`eyre::Result`].
-
-```rust
-use stable_eyre::Report;
-
-// or
-
-fn example(&self) -> stable_eyre::Result<()> {
-    // ...
-}
-```
+Then install the hook handler before constructing any `eyre::Report` types.
 
 # Example
 
-
 ```rust
-use eyre::WrapErr;
-use stable_eyre::Report;
+use stable_eyre::eyre::{eyre, Report, WrapErr};
 
 fn main() -> Result<(), Report> {
-    Ok(read_config()?)
-}
+    stable_eyre::install()?;
 
-fn read_file(path: &str) -> Result<(), Report> {
-    Ok(std::fs::read_to_string(path).map(drop)?)
-}
+    let e: Report = eyre!("oh no this program is just bad!");
 
-fn read_config() -> Result<(), Report> {
-    read_file("fake_file")
-        .wrap_err("Unable to read config")
+    Err(e).wrap_err("usage example successfully experienced a failure")
 }
 ```
+
+[`eyre::EyreHandler`]: https://docs.rs/eyre/*/eyre/trait.EyreHandler.html
+[`eyre`]: https://docs.rs/eyre
+[`backtrace::Backtrace`]: https://docs.rs/backtrace/*/backtrace/struct.Backtrace.html
 
 #### License
 
@@ -71,7 +58,3 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in this crate by you, as defined in the Apache-2.0 license, shall
 be dual licensed as above, without any additional terms or conditions.
 </sub>
-
-[`eyre`]: https://docs.rs/eyre
-[`eyre::EyreContext`]: https://docs.rs/eyre/0.3.8/eyre/trait.EyreContext.html
-[`eyre::Report`]: https://docs.rs/eyre/0.3.8/eyre/struct.Report.html

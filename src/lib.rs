@@ -1,42 +1,74 @@
-//! This library provides a custom [`eyre::EyreContext`] type for usage with [`eyre`] that provides
-//! all the same features as `eyre::DefaultContext` except it works on stable by capturing a
+//! This library provides a custom [`eyre::EyreHandler`] type for usage with [`eyre`] that provides
+//! all the same features as `eyre::DefaultHandler` except it works on stable by capturing a
 //! [`backtrace::Backtrace`] via backtrace-rs.
+//!
+//! ## Setup
+//!
+//! Add the following to your toml file:
+//!
+//! ```toml
+//! [dependencies]
+//! stable-eyre = "0.2"
+//! ```
+//!
+//! Then install the hook handler before constructing any `eyre::Report` types.
 //!
 //! # Example
 //!
 //! ```rust,should_panic
-//! use eyre::{eyre, WrapErr};
-//! use stable_eyre::Report;
+//! use stable_eyre::eyre::{eyre, Report, WrapErr};
 //!
 //! fn main() -> Result<(), Report> {
+//!     stable_eyre::install()?;
+//!
 //!     let e: Report = eyre!("oh no this program is just bad!");
 //!
 //!     Err(e).wrap_err("usage example successfully experienced a failure")
 //! }
 //! ```
 //!
-//! [`eyre::EyreContext`]: https://docs.rs/eyre/0.3.8/eyre/trait.EyreContext.html
+//! [`eyre::EyreHandler`]: https://docs.rs/eyre/*/eyre/trait.EyreHandler.html
 //! [`eyre`]: https://docs.rs/eyre
-//! [`backtrace::Backtrace`]: https://docs.rs/backtrace/0.3.46/backtrace/struct.Backtrace.html
+//! [`backtrace::Backtrace`]: https://docs.rs/backtrace/*/backtrace/struct.Backtrace.html
+#![doc(html_root_url = "https://docs.rs/stable-eyre/0.2.0")]
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub,
+    bad_style,
+    const_err,
+    dead_code,
+    improper_ctypes,
+    non_shorthand_field_patterns,
+    no_mangle_generic_items,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    private_in_public,
+    unconditional_recursion,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
+)]
+
+pub use eyre;
+#[doc(hidden)]
+pub use eyre::{Report, Result};
+
 use backtrace::Backtrace;
-use eyre::Chain;
-use eyre::EyreContext;
-use std::error::Error;
+use indenter::indented;
+use std::{env, error::Error, iter};
 
 /// A custom context type for capturing backtraces on stable with `eyre`
 #[derive(Debug)]
-pub struct Context {
-    backtrace: Backtrace,
+pub struct Handler {
+    backtrace: Option<Backtrace>,
 }
 
-impl EyreContext for Context {
-    #[allow(unused_variables)]
-    fn default(error: &(dyn Error + 'static)) -> Self {
-        let backtrace = Backtrace::new();
-
-        Self { backtrace }
-    }
-
+impl eyre::EyreHandler for Handler {
     fn debug(
         &self,
         error: &(dyn Error + 'static),
@@ -52,49 +84,87 @@ impl EyreContext for Context {
 
         if let Some(cause) = error.source() {
             write!(f, "\n\nCaused by:")?;
+
             let multiple = cause.source().is_some();
-            for (n, error) in Chain::new(cause).enumerate() {
+            let errors = iter::successors(Some(cause), |e| e.source());
+
+            for (n, error) in errors.enumerate() {
                 writeln!(f)?;
                 if multiple {
-                    write!(indenter::Indented::numbered(f, n), "{}", error)?;
+                    write!(indented(f).ind(n), "{}", error)?;
                 } else {
-                    write!(indenter::Indented::new(f), "{}", error)?;
+                    write!(indented(f), "{}", error)?;
                 }
             }
         }
 
-        let backtrace = &self.backtrace;
-        write!(f, "\n\nStack backtrace:\n{:?}", backtrace)?;
+        if let Some(backtrace) = &self.backtrace {
+            write!(f, "\n\nStack backtrace:\n{:?}", backtrace)?;
+        }
 
         Ok(())
     }
 }
 
-/// A type alias for `eyre::Report<stable_eyre::Context>`
-///
-/// # Example
-///
-/// ```rust
-/// use stable_eyre::Report;
-///
-/// # struct Config;
-/// fn try_thing(path: &str) -> Result<Config, Report> {
-///     // ...
-/// # Ok(Config)
-/// }
-/// ```
-pub type Report = eyre::Report<Context>;
+/// Builder for customizing the behavior of the global error report hook
+#[derive(Debug)]
+pub struct HookBuilder {
+    capture_backtrace_by_default: bool,
+}
 
-/// A type alias for `Result<T, stable_eyre::Report>`
+impl HookBuilder {
+    #[allow(unused_variables)]
+    fn make_handler(&self, error: &(dyn Error + 'static)) -> Handler {
+        let backtrace = if self.capture_enabled() {
+            Some(Backtrace::new())
+        } else {
+            None
+        };
+
+        Handler { backtrace }
+    }
+
+    fn capture_enabled(&self) -> bool {
+        env::var("RUST_LIB_BACKTRACE")
+            .or_else(|_| env::var("RUST_BACKTRACE"))
+            .map(|val| val != "0")
+            .unwrap_or(self.capture_backtrace_by_default)
+    }
+
+    /// Configures the default capture mode for `Backtraces` in error reports
+    pub fn capture_backtrace_by_default(mut self, cond: bool) -> Self {
+        self.capture_backtrace_by_default = cond;
+        self
+    }
+
+    /// Install the given hook as the global error report hook
+    pub fn install(self) -> Result<()> {
+        crate::eyre::set_hook(Box::new(move |e| Box::new(self.make_handler(e))))?;
+
+        Ok(())
+    }
+}
+
+impl Default for HookBuilder {
+    fn default() -> Self {
+        Self {
+            capture_backtrace_by_default: false,
+        }
+    }
+}
+
+/// Install the default error report hook provided by `stable-eyre`
 ///
-/// # Example
+/// # Details
 ///
-///```
-/// fn main() -> stable_eyre::Result<()> {
+/// This function must be called to enable the customization of `eyre::Report`
+/// provided by `stable-eyre`. This function should be called early, ideally
+/// before any errors could be encountered.
 ///
-///     // ...
-///
-///     Ok(())
-/// }
-/// ```
-pub type Result<T, E = Report> = core::result::Result<T, E>;
+/// Only the first install will succeed. Calling this function after another
+/// report handler has been installed will cause an error. **Note**: This
+/// function _must_ be called before any `eyre::Report`s are constructed to
+/// prevent the default handler from being installed.
+pub fn install() -> Result<()> {
+    HookBuilder::default().install()
+}

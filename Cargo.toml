@@ -1,6 +1,6 @@
 [package]
 name = "stable-eyre"
-version = "0.1.3"
+version = "0.2.0"
 authors = ["Jane Lusby <jlusby@yaah.dev>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -13,6 +13,6 @@ A custom context for eyre that supports capturing Backtraces on stable
 """
 
 [dependencies]
-backtrace = "0.3.46"
-indenter = "0.1.3"
-eyre = "0.3.8"
+backtrace = { version = "0.3.48", features = ["gimli-symbolize"] }
+indenter = "0.3.0"
+eyre = "0.6.0"
