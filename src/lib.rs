@@ -58,9 +58,35 @@ pub use eyre;
 #[doc(hidden)]
 pub use eyre::{Report, Result};
 
-use backtrace::Backtrace;
+use ::backtrace::Backtrace;
 use indenter::indented;
 use std::{env, error::Error, iter};
+
+/// Extension trait to extract a backtrace from an `eyre::Report`, assuming
+/// stable-eyre's hook is installed.
+pub trait BacktraceExt {
+    /// Returns a reference to the captured backtrace if one exists
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use stable_eyre::{BacktraceExt, eyre::eyre};
+    /// stable_eyre::install();
+    /// std::env::set_var("RUST_BACKTRACE", "1");
+    ///
+    /// let report = eyre!("capture a report");
+    /// assert!(report.backtrace().is_some());
+    /// ```
+    fn backtrace(&self) -> Option<&Backtrace>;
+}
+
+impl BacktraceExt for eyre::Report {
+    fn backtrace(&self) -> Option<&Backtrace> {
+        self.handler()
+            .downcast_ref::<crate::Handler>()
+            .and_then(|handler| handler.backtrace.as_ref())
+    }
+}
 
 /// A custom context type for capturing backtraces on stable with `eyre`
 #[derive(Debug)]
