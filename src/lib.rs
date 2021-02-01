@@ -112,7 +112,7 @@ impl eyre::EyreHandler for Handler {
             write!(f, "\n\nCaused by:")?;
 
             let multiple = cause.source().is_some();
-            let errors = iter::successors(Some(cause), |e| e.source());
+            let errors = iter::successors(Some(cause), |e| (*e).source());
 
             for (n, error) in errors.enumerate() {
                 writeln!(f)?;
