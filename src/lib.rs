@@ -30,7 +30,7 @@
 //! [`eyre::EyreHandler`]: https://docs.rs/eyre/*/eyre/trait.EyreHandler.html
 //! [`eyre`]: https://docs.rs/eyre
 //! [`backtrace::Backtrace`]: https://docs.rs/backtrace/*/backtrace/struct.Backtrace.html
-#![doc(html_root_url = "https://docs.rs/stable-eyre/0.2.1")]
+#![doc(html_root_url = "https://docs.rs/stable-eyre/0.2.2")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -112,7 +112,7 @@ impl eyre::EyreHandler for Handler {
             write!(f, "\n\nCaused by:")?;
 
             let multiple = cause.source().is_some();
-            let errors = iter::successors(Some(cause), |e| e.source());
+            let errors = iter::successors(Some(cause), |e| (*e).source());
 
             for (n, error) in errors.enumerate() {
                 writeln!(f)?;
