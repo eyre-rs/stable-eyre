@@ -30,7 +30,7 @@
 //! [`eyre::EyreHandler`]: https://docs.rs/eyre/*/eyre/trait.EyreHandler.html
 //! [`eyre`]: https://docs.rs/eyre
 //! [`backtrace::Backtrace`]: https://docs.rs/backtrace/*/backtrace/struct.Backtrace.html
-#![doc(html_root_url = "https://docs.rs/stable-eyre/0.2.1")]
+#![doc(html_root_url = "https://docs.rs/stable-eyre/0.2.2")]
 #![warn(
     missing_debug_implementations,
     missing_docs,
