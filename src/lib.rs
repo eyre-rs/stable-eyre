@@ -140,7 +140,7 @@ pub struct HookBuilder {
 
 impl HookBuilder {
     #[allow(unused_variables)]
-    fn make_handler(&self, error: &(dyn Error + 'static)) -> Handler {
+    pub fn make_handler(&self, error: &(dyn Error + 'static)) -> Handler {
         let backtrace = if self.capture_enabled() {
             Some(Backtrace::new())
         } else {
