@@ -139,6 +139,26 @@ pub struct HookBuilder {
 }
 
 impl HookBuilder {
+    /// Build a [`Handler`] for an error.
+    /// Normally, [`HookBuilder::install()`] will configure the global error
+    /// hook to call this function, but you can use it directly instead if you
+    /// want to customize the error hook.
+    ///
+    /// # Example
+    ///
+    /// ```rust,should_panic
+    /// use stable_eyre::{eyre::{self, eyre, Report}, HookBuilder};
+    ///
+    /// fn main() -> Result<(), Report> {
+    ///     let hook_builder = HookBuilder::default();
+    ///     eyre::set_hook(Box::new(move |error| {
+    ///         // ...do something else with `error`...
+    ///         Box::new(hook_builder.make_handler(error))
+    ///     }));
+    ///
+    ///     Err(eyre!("oh no!"))
+    /// }
+    /// ```
     #[allow(unused_variables)]
     pub fn make_handler(&self, error: &(dyn Error + 'static)) -> Handler {
         let backtrace = if self.capture_enabled() {
